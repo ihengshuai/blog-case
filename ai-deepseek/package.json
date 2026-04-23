@@ -1,0 +1,8 @@
+{
+  "name": "test-deepseek-ai",
+  "type": "module",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "openai": "^4.77.3"
+  }
+}

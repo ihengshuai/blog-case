@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    // 编译
+    "outDir": "dist",
+    "target": "ES5",
+    "module": "ESNext",
+    "lib": ["DOM", "ESNext"],
+
+    // 检查
+    "strictNullChecks": true,
+    "noImplicitAny": true
+  },
+}

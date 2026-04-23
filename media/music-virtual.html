@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音频可视化</title>
+  <meta name="author" content="ihengshuai@foxmail.com">
+  <meta name="renderer" content="webkit">
+  <meta rel="profile" href="http://gmpg.org/xfn/11">
+  <meta name="referrer" content="same-origin">
+
+  <style>
+    body {
+      text-align: center;
+    }
+    canvas {
+      margin: 40px auto;
+    }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="canvas"></canvas>
+  <button id="play">播放/暂停</button>
+
+
+  <script>
+    const audioSrc = 'https://ihengshuai-demo1.oss-cn-beijing.aliyuncs.com/my-all.mp3';
+    // const audioSrc = '/__example__/media/my-all.mp3';
+    // let canvas = document.querySelector('#canvas');
+    let ctx = null;
+    let canvasW = 0;
+    let canvasH = 0;
+    let audio = null;
+    let inited = false;
+    let isPlaying = false;
+    let audioDataBuffer = null;
+    let analyser = null;
+
+
+    function init() {
+      canvasW = canvas.width = canvas.parentElement.clientWidth - 40;
+      canvasH = canvas.height = 400;
+      ctx = canvas.getContext("2d");
+      ctx.fillStyle = '#4646fc';
+
+      audio = new Audio(audioSrc);
+      audio.crossOrigin = 'anonymous';
+    }
+
+    const play = () => {
+      if (!inited) {
+        inited = true;
+
+        // 1. 创建音频上下文，源节点、分析器节点、输出目标，互相连接即可
+        // 分析器拿到音频的数据，进行canvas渲染
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaElementSource(audio);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        audioDataBuffer = new Uint8Array(analyser.frequencyBinCount); // 傅里叶转换
+      }
+      isPlaying = true;
+
+      draw();
+    };
+
+    const stop = () => {
+      isPlaying = false;
+    };
+
+    function draw() {
+      if (!isPlaying) return;
+      ctx.clearRect(0, 0, canvasW, canvasH);
+      analyser.getByteFrequencyData(audioDataBuffer);
+      const barLen = audioDataBuffer.length / 2;
+      const barWidth = canvasW / barLen / 2;
+      for (let i = 0; i < barLen; i++) {
+        const data = audioDataBuffer[i];
+        const barHeight = data / 255 * canvasH;
+        const x1 = i * barWidth + canvasW / 2;
+        const x2 = canvasW / 2 - (i + 1) * barWidth;
+        const y = canvasH - barHeight;
+        ctx.fillRect(x1, y, barWidth - 1, barHeight);
+        ctx.fillRect(x2, y, barWidth - 1, barHeight);
+      }
+      requestAnimationFrame(draw);
+    }
+
+    document.querySelector('#play').addEventListener('click', () => {
+      if (isPlaying) {
+        audio.pause();
+        stop();
+      } else {
+        audio.play();
+        play();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>无限debug</title>
+</head>
+
+<body>
+  打开控制台无限debug
+
+  <script>
+
+    setInterval(() => {
+      Function('debugger')();
+
+      Function(`if (window.outerHeight - window.innerHeight > 200 || window.outerWidth - window.innerWidth > 200) {
+        window.open('about:blank', "_self");
+      }`)();
+    });
+
+  </script>
+</body>
+
+</html>

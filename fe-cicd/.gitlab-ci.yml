@@ -1,0 +1,126 @@
+image: node:18-alpine
+
+variables:
+  IMAGE_TAG: $CI_PROJECT_NAME:$CI_COMMIT_REF_NAME
+
+stages:
+  - install_deps
+  - testing
+  - build
+  - deploy
+  - notice
+
+install_dependencies:
+  stage: install_deps
+  only:
+    - dev
+  tags:
+    - testing
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - node_modules
+  artifacts:
+    expire_in: "30" #30s
+    paths:
+      - node_modules
+  script:
+    - echo "Installing dependencies..."
+    - sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+    - apk update && apk add git && apk add openssh-client
+    - npm config set registry https://registry.npmmirror.com/
+    - npm install -g pnpm
+    - pnpm install
+    - echo "Dependencies installed successfully!"
+
+testing_project:
+  stage: testing
+  tags:
+    - testing
+  needs:
+    - install_dependencies
+  script:
+    - echo "Testing project..."
+    - pnpm run test:unit
+
+build_project:
+  stage: build
+  only:
+    - dev
+  tags:
+    - testing
+  artifacts:
+    expire_in: "30"
+    paths:
+      - dist
+  needs:
+    - testing_project
+  script:
+    - echo "Building project..."
+    - pnpm build
+
+build_image:
+  stage: build
+  needs:
+    - build_project
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  only:
+    - dev
+  tags:
+    - testing
+  script:
+    - echo "Deploying project..."
+    - for var in ${PROJECT_ENV_VARIABLE// / }; do echo $var >> .env;done
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${DOCKER_REPO}\":{\"username\":\"${DOCKER_REGISTRY_USER}\",\"password\":\"${DOCKER_REGISTRY_PASSWORD}\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "$DOCKER_REPO/$IMAGE_TAG"
+
+deploy_to_k8s:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  only:
+    - dev
+  tags:
+    - testing
+  needs:
+    - build_image
+  before_script:
+    - echo "Setting up kubectl"
+    - mkdir -p ~/.kube
+    - echo "$KUBE_CONFIG" > ~/.kube/config
+  script:
+    - echo "Updating Kubernetes deployment"
+    - kubectl set image deployment/$K8S_DEPLOYMENT_NAME $K8S_CONTAINER_NAME=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA --namespace=$K8S_NAMESPACE
+    - kubectl rollout status deployment/$K8S_DEPLOYMENT_NAME --namespace=$K8S_NAMESPACE
+
+
+notice_success:
+  stage: notice
+  only:
+    - dev
+  tags:
+    - testing
+  needs:
+    - deploy_to_k8s
+  when: on_success
+  script:
+    - echo "success"
+
+notice_failure:
+  stage: notice
+  only:
+    - dev
+  tags:
+    - testing
+  needs:
+    - deploy_to_k8s
+  when: on_failure
+  script:
+    - echo "failure"

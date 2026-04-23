@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音频录制</title>
+  <meta name="renderer" content="webkit">
+  <meta rel="profile" href="http://gmpg.org/xfn/11">
+  <meta name="referrer" content="same-origin">
+</head>
+
+<body>
+  <div id="app">
+    <button @click="toggleRecord">{{ !isRecording ? "录制" : "停止" }}</button>
+    <button v-if="isRecording" @click="resumeRecorder">
+      {{ isPaused ? "继续" : "暂停" }}
+    </button>
+
+    <video v-if="audioURL" :src="audioURL" controls></video>
+
+    <canvas ref="canvas" />
+  </div>
+
+  <script type="module">
+    import { createApp, ref, onMounted } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+
+    createApp({
+      setup() {
+
+        const canvas = ref();
+        let ctx;
+        let canvasW = 0;
+        let canvasH = 0;
+        const mediaStream = ref();
+        const mediaRecorder = ref();
+        const audioURL = ref();
+        const isRecording = ref(false);
+        const isPaused = ref(false);
+
+        onMounted(() => {
+          canvasW = canvas.value.width = canvas.value.parentElement.offsetWidth;
+          canvasH = canvas.value.height = 400;
+          ctx = canvas.value.getContext('2d');
+        });
+
+        const toggleRecord = () => {
+          if (isRecording.value) {
+            isPaused.value = true;
+            mediaRecorder.value?.stop();
+          } else {
+            audioURL.value = null;
+            isPaused.value = false;
+            start();
+          }
+          isRecording.value = !isRecording.value;
+        };
+        const resumeRecorder = () => {
+          if (isPaused.value) {
+            mediaRecorder.value?.resume();
+          } else {
+            mediaRecorder.value?.pause();
+          }
+          isPaused.value = !isPaused.value;
+        };
+
+        function renderGraphics() {
+          if (!mediaStream.value) return;
+          const audio = new AudioContext();
+          const analyser = audio.createAnalyser();
+          const source = audio.createMediaStreamSource(mediaStream.value);
+          source.connect(analyser);
+          const renderCurve = () => {
+            const bufferLen = analyser.fftSize;
+            const bufferData = new Uint8Array(bufferLen);
+            analyser.getByteTimeDomainData(bufferData);
+            ctx.clearRect(0, 0, canvasW, canvasH);
+            ctx.fillStyle = "#fff";
+            ctx.strokeStyle = "#333";
+            ctx.fillRect(0, 0, canvasW, canvasH);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const columns = canvasW / bufferLen;
+            let x = 0;
+            ctx.moveTo(x, canvasH / 2);
+            for (let i = 0; i < bufferLen; i++) {
+              const v = bufferData[i] / 128;
+              const y = v * canvasH / 2;
+              ctx.lineTo(x, y);
+              x += columns;
+            }
+            ctx.stroke();
+            if (isRecording.value && !isPaused.value) {
+              window.requestAnimationFrame(renderCurve);
+            } else {
+              console.log("no rendering");
+            }
+          };
+          renderCurve();
+        }
+
+        function start() {
+          try {
+            navigator.mediaDevices
+              .getUserMedia({ audio: true, video: false })
+              .then((_mediaStream) => {
+                console.log(_mediaStream);
+
+                mediaStream.value = _mediaStream;
+                const mediaChunks = [];
+                mediaRecorder.value = new MediaRecorder(_mediaStream);
+                mediaRecorder.value.ondataavailable = ({ data }) => {
+                  mediaChunks.push(data);
+                };
+                mediaRecorder.value.onstart = () => {
+                  console.log("开始录制...");
+                  renderGraphics();
+                };
+                mediaRecorder.value.onstop = () => {
+                  console.log("停止录制...");
+                  const blobProperty = { type: "video/webm; codecs=opus" };
+                  const blob = new Blob(mediaChunks, blobProperty);
+                  const url = URL.createObjectURL(blob);
+                  console.log(url);
+                  audioURL.value = url;
+                };
+                mediaRecorder.value.onerror = () => {
+                  console.log("录制出错了...");
+                };
+                // 开始
+                mediaRecorder.value.start();
+
+                // 暂停
+                // mediaRecorder.value.pause();
+                // 继续
+                // mediaRecorder.value.resume();
+              }).catch(() => {
+                if (window.parent !== window) {
+                  alert('由于跨域限制，正在尝试打开此页面');
+                  goNewPage();
+                }
+              });
+          } catch (err) {
+            if (window.parent !== window) {
+              alert('由于跨域限制，正在尝试打开此页面');
+
+              goNewPage();
+            }
+            throw err;
+          }
+        }
+
+        function goNewPage() {
+          window.open(location.href, '_blank');
+        }
+        return {
+          canvas,
+          audioURL,
+          isRecording,
+          resumeRecorder,
+          toggleRecord,
+        };
+      }
+    }).mount('#app')
+  </script>
+</body>
+
+</html>

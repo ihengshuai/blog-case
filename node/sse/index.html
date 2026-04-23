@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>SSE Client</title>
+</head>
+
+<body>
+  <h1>Server-Sent Events Demo</h1>
+  <div id="output"></div>
+
+  <script>
+    const eventSource = new EventSource('http://localhost:3000/sse');
+
+    eventSource.addEventListener("message", (e) => {
+      console.log(e);
+      if (e.data >> 0 > 4) eventSource.close();
+    });
+
+    eventSource.addEventListener('error', (e) => {
+      console.log('Connection failed:', e);
+    })
+  </script>
+</body>
+
+</html>

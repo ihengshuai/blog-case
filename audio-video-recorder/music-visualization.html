@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音乐可视化</title>
+</head>
+<body>
+  <button id="player">播放</button>
+  <br>
+  <canvas id="canvas" width="500" height="200"></canvas>
+
+  <script>
+    const btn = document.getElementById('player')
+    const canvas = document.getElementById('canvas')
+    const ctx = canvas.getContext('2d')
+    const canvasWidth = canvas.width
+    const canvasHeight = canvas.height
+
+    btn.addEventListener('click', start)
+
+    function start() {
+      const audio = new Audio('/* 你的音乐链接 */')
+      audio.play()
+
+      const audioContext = new AudioContext()
+      const source = audioContext.createMediaElementSource(audio)
+      const analyser = audioContext.createAnalyser()
+      source.connect(analyser).connect(audioContext.destination)
+      analyser.fftSize = 4096
+      const bufferLength = analyser.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+
+      renderFrame()
+
+      function renderFrame() { 
+        requestAnimationFrame(renderFrame)
+
+        analyser.getByteFrequencyData(dataArray)
+
+        const width = canvasWidth;
+        const height = canvasHeight;
+
+        ctx.clearRect(0, 0, width, height);
+
+        // 绘制背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+        ctx.fillRect(0, 0, width, height);
+
+        const barCount = 30;
+        const barWidth = width / barCount;
+        // 间隔宽度
+        const barGap = 2;
+
+        for (let i = 0; i < barCount; i++) {
+          const barIndex = Math.floor(i * dataArray.length / barCount);
+          const amplitude = dataArray[barIndex];
+          const barHeight = (amplitude / 255) * height;
+
+          const gradient = ctx.createLinearGradient(0, height - barHeight, 0, height);
+          gradient.addColorStop(0, '#00f2fe');
+          gradient.addColorStop(1, '#4facfe');
+
+          ctx.fillStyle = gradient;
+          ctx.fillRect(i * barWidth + barGap * (i + 1), height - barHeight, barWidth - 2, barHeight);
+        }
+      }
+    }
+
+  </script>
+</body>
+</html>

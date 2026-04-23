@@ -1,0 +1,22 @@
+.box {
+  width: 100px;
+  height: 100px;
+  background-color: red;
+  margin: 10px;
+  animation: 1s linear infinite alternate box-animation;
+}
+
+.box.optimized {
+  will-change: transform;
+  animation-name: box-animation-optimized;
+}
+
+@keyframes box-animation {
+  from { margin-left: 0; }
+  to { margin-left: 200px; }
+}
+
+@keyframes box-animation-optimized {
+  from { transform: translateX(0); }
+  to { transform: translateX(200px); }
+}

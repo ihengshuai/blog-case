@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <button id="btn">获取设备</button>
+
+  <script>
+    const btn = document.getElementById('btn');
+
+    btn.addEventListener('click', getDevices);
+
+    async function getDevices() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      console.log(devices);
+    }
+  </script>
+</body>
+</html>

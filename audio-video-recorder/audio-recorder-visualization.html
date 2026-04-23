@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音频录制可视化</title>
+</head>
+<body>
+  <button id="start">开始</button>
+  <br>
+  <canvas id="audioTrack" width="500" height="200"></canvas>
+
+
+  <script>
+    const startBtn = document.getElementById('start');
+    const canvas = document.getElementById('audioTrack');
+    const ctx = canvas.getContext('2d');
+
+    startBtn.addEventListener('click', start);
+
+    async function start() {
+      const mediaStream = await getUserMedia();
+      const audioContext = new AudioContext();
+
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      const analyser = audioContext.createAnalyser();
+      source.connect(analyser);
+      analyser.fftSize = 1024;
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+
+      draw();
+
+      function draw() { 
+        requestAnimationFrame(draw);
+
+        analyser.getByteTimeDomainData(dataArray);
+        
+        ctx.clearRect(0, canvasWidth, 0, canvasHeight);
+        ctx.beginPath();
+        ctx.strokeStyle =  "#fff";
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        ctx.lineWidth = 1;
+
+        const columns = canvasWidth / analyser.frequencyBinCount;
+        let x = 0;
+        ctx.moveTo(x, canvasHeight / 2);
+        for (let i = 0; i < analyser.fftSize; i++) {
+          const v = dataArray[i] / 128;
+          const y = (v * canvasHeight) / 2;
+          // ctx.lineTo(x, y);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          x += columns;
+        }
+        ctx.stroke();
+      }
+    }
+
+
+    function getUserMedia() {
+      return navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false
+      });
+    }
+  </script>
+</body>
+</html>

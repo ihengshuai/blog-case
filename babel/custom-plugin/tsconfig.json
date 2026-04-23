@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+  },
+  "include": ["**-plugin/**/*.ts"],
+}

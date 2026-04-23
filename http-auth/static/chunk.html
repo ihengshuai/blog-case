@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chunk Transfer</title>
+</head>
+<body>
+  <button class="chunk">chunk请求</button>
+  <br>
+  <button class="length">固定长度请求</button>
+  <script>
+     function $(str) {
+      return document.querySelector(str)
+    }
+
+
+    $(".chunk").addEventListener("click", () => {
+      fetch("/chunked")
+    })
+    $(".length").addEventListener("click", () => {
+      fetch("/length")
+    })
+  </script>
+</body>
+</html>

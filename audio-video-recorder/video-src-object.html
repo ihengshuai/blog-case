@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+
+  <style>
+    video {
+      width: 600px;
+      max-width: 600px;
+    }
+  </style>
+</head>
+
+<body>
+  <button id="start">开始</button>
+
+  <script>
+    const startBtn = document.getElementById('start');
+    let recordBtn;
+    let videoElem;
+    let mediaStream;
+    let recorder;
+    let isRecording = false;
+    const blobChunks = [];
+
+    startBtn.addEventListener('click', start);
+
+    async function start() {
+      startBtn.remove();
+      mediaStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: "always", }
+      });
+
+      videoElem = document.createElement('video');
+      videoElem.srcObject = mediaStream;
+
+      videoElem.play();
+      document.body.appendChild(videoElem);
+
+      recordBtn = document.createElement('button');
+      recordBtn.innerText = '开始录制';
+      document.body.appendChild(recordBtn);
+      recordBtn.addEventListener('click', startRecording);
+    }
+
+    function startRecording() {
+      if (isRecording) {
+        recorder.stop();
+        isRecording = false;
+        return;
+      }
+      if (!isRecording) {
+        recordBtn.innerText = '正在录制,点击停止';
+        isRecording = true;
+      }
+      recorder = new MediaRecorder(mediaStream, {
+        mimeType: 'video/webm; codecs=vp9'
+      });
+
+      recorder.ondataavailable = function (e) {
+        blobChunks.push(e.data);
+      };
+
+      recorder.onstop = stopRecording;
+
+      recorder.start(30);
+    }
+
+    function stopRecording() {
+      const blob = new Blob(blobChunks, { type: "video/webm;codecs=h264" });
+      blobChunks.length = 0;
+      const link = URL.createObjectURL(blob);
+      window.open(link, "_blank");
+
+      recorder = null;
+      videoElem && videoElem.remove();
+      recordBtn && recordBtn.remove();
+      blobChunks.length = 0;
+      mediaStream && mediaStream.getTracks().forEach(track => track.stop());
+    }
+
+
+    // 获取网络连接信息
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+
+    if (connection) {
+      connection.addEventListener('change', () => {
+        handleNetworkChange(connection.effectiveType);
+      });
+    }
+
+    function handleNetworkChange(networkType) {
+      console.log('网络类型：', networkType)
+      if (!mediaStream) return
+
+      const videoTrack = mediaStream.getVideoTracks()[0];
+      const constraints = videoTrack.getConstraints();
+
+      if (networkType === 'slow-2g' || networkType === '2g' || networkType === '3g') {
+        console.warn('网络质量差，启用低分辨率模式');
+        videoTrack.applyConstraints({
+          ...constraints,
+          width: 320,
+          frameRate: 15
+        });
+        // 调整视频质量/减少数据传输等
+      } else if (networkType === '4g') {
+        console.log('网络良好，启用高清模式');
+        videoTrack.applyConstraints({
+          ...constraints,
+          width: 1280,
+          height: 720,
+          frameRate: 30
+        });
+      }
+    }
+  </script>
+</body>
+
+</html>

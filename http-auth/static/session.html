@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>session</title>
+</head>
+<body>
+	<button>设置session</button>
+	<script type="text/javascript">
+		document.querySelector("button").addEventListener("click", () => {
+			fetch("/session", { method: 'post' })
+		})
+	</script>
+</body>
+</html>
